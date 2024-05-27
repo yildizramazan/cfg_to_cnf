@@ -1,3 +1,4 @@
+
 #Ramazan Yıldız
 #220709024
 #Context Free Form to Chomsky Normal Form Converter
@@ -47,21 +48,48 @@ class cfg_to_cnf:
         self.productions = {**new_start, **self.productions}
 
     def remove_null_productions(self):
-        nullable = []
-        for left_hs, right_hs in self.productions.items():
-            for element in right_hs:
-                if element == '𝛜':
-                    if left_hs not in nullable:
-                        nullable.append(left_hs)
+        nullable = set()
+        for lhs, rhs in self.productions.items():
+            for prod in rhs:
+                if prod == '𝛜':
+                    rhs.remove('𝛜')
+                    nullable.add(lhs)
                     break
-        print(f"nullables variables are: {nullable}")
 
-        for null_sym in nullable:
-            for left_hs, right_hs in self.productions.items():
-                for element in right_hs:
-                    for variable in element:
-                        if null_sym == variable:
-                            print(f"left hs is {left_hs} right hs is: {right_hs}, element is {element}, variable is {variable} and null_sym is {null_sym}")
+        while True:
+            new_nullable = set(nullable)
+            for lhs, rhs in self.productions.items():
+                for prod in rhs:
+                    if all(symbol in nullable for symbol in prod):
+                        new_nullable.add(lhs)
+            if new_nullable == nullable:
+                break
+            nullable = new_nullable
+
+        new_productions = {}
+        for lhs, rhs in self.productions.items():
+            new_rhs = []
+            for prod in rhs:
+                if prod != '':
+                    new_rhs.append(prod)
+                subsets = self.all_combinations(prod, nullable)
+                for subset in subsets:
+                    if subset and subset != prod:
+                        new_rhs.append(subset)
+            new_productions[lhs] = list(set(new_rhs))
+        self.productions = new_productions
+
+    def all_combinations(self, prod, nullable):
+        if not prod:
+            return []
+        results = [[]]
+        for symbol in prod:
+            if symbol in nullable:
+                results = [result + [symbol] for result in results] + results
+            else:
+                results = [result + [symbol] for result in results]
+        return [''.join(result) for result in results]
+
 
 
 
@@ -75,7 +103,6 @@ class cfg_to_cnf:
         all_left_hs = []
         for left_hs, right_hs in self.productions.items():
             all_left_hs.append(left_hs)
-            rhs_at_once = ""
             a_list = []
             for prod in right_hs:
                 a_list.append(f"{''.join(prod)}")
@@ -91,6 +118,13 @@ example_productions = {
     'D': ['d', 'C']
 }
 
-cnf_converter = cfg_to_cnf(example_productions)
+
+example_null_removal = {
+    'S': ['ABAC'],
+    'A': ['aA', '𝛜'],
+    'B': ['bB', '𝛜'],
+    'C': ['c']
+}
+cnf_converter = cfg_to_cnf(example_null_removal)
 
 print(cnf_converter.productions)
